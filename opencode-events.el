@@ -130,7 +130,7 @@
        (when session-id
          (run-hook-with-args 'opencode-session-deleted-functions session-id)
          (opencode--with-session-buffer session-id
-           (when-let ((process (get-buffer-process (current-buffer))))
+           (when-let* ((process (get-buffer-process (current-buffer))))
              (delete-process process)))
          (remhash session-id opencode-session-buffers)
          (opencode--redisplay-control-buffers)))
@@ -235,7 +235,7 @@ METADATA may contain a V1-style diff for line ranges."
         (dolist (file files)
           (let* ((raw (if (consp file) (car file) file))
                  (range (if (consp file) (cdr file) nil)))
-            (when-let ((path (opencode--resolve-file-reference raw)))
+            (when-let* ((path (opencode--resolve-file-reference raw)))
               (unless (member path opencode--files-edited-this-turn)
                 (cl-pushnew path opencode--files-edited-this-turn :test #'equal)
                 (run-hook-with-args 'opencode-file-edited-functions
@@ -315,7 +315,7 @@ METADATA may contain a V1-style diff for line ranges."
                                                   opencode-last-session-buffer)))))
     (when (and file session-id)
       (opencode--with-session-buffer session-id
-        (when-let ((path (opencode--resolve-file-reference file)))
+        (when-let* ((path (opencode--resolve-file-reference file)))
           (unless (member path opencode--files-edited-this-turn)
             (cl-pushnew path opencode--files-edited-this-turn :test #'equal)
             (run-hook-with-args 'opencode-file-edited-functions path nil)))))))
@@ -355,7 +355,7 @@ METADATA may contain a V1-style diff for line ranges."
      (alist-get 'resources data)
      (alist-get 'save data)))
    ((equal type "form.created")
-    (when-let ((form (alist-get 'form data)))
+    (when-let* ((form (alist-get 'form data)))
       (opencode-form--handle form)))
    ((equal type "question.asked")
     (when (fboundp 'opencode-form--handle-question)

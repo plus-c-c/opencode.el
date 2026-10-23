@@ -118,7 +118,7 @@ Requests are processed FIFO.")
 (defmacro opencode--with-session-buffer (session-id &rest body)
   "Run BODY in the live session buffer for SESSION-ID."
   (declare (indent 1))
-  `(when-let ((buffer (gethash ,session-id opencode-session-buffers)))
+  `(when-let* ((buffer (gethash ,session-id opencode-session-buffers)))
      (when (buffer-live-p buffer)
        (with-current-buffer buffer
          ,@body))))

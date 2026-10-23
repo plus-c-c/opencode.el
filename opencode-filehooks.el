@@ -27,7 +27,7 @@
                   (unless .state.metadata.diff
                     (error "Missing diff metadata for %s tool" .tool))
                   (opencode-diff->source-line-ranges .state.metadata.diff))))
-        (when-let ((file (opencode--resolve-file-reference (car file-ranges))))
+        (when-let* ((file (opencode--resolve-file-reference (car file-ranges))))
           (opencode--with-session-buffer .sessionID
             (cl-pushnew file opencode--files-edited-this-turn :test #'equal))
           (run-hook-with-args 'opencode-file-edited-functions
@@ -96,10 +96,10 @@
   (let ((context opencode--files-finished-editing-current))
     (unless context
       (error "No active finished-editing hook context"))
-    (when-let ((buffer (plist-get context :session-buffer)))
+    (when-let* ((buffer (plist-get context :session-buffer)))
       (when (buffer-live-p buffer)
         (with-current-buffer buffer
-          (if-let ((hook (car (plist-get context :hooks))))
+          (if-let* ((hook (car (plist-get context :hooks))))
               (let (result errored)
                 (plist-put context :hooks (cdr (plist-get context :hooks)))
                 (plist-put context :active-hook hook)
@@ -129,7 +129,7 @@
     (when opencode--files-edited-this-turn
       (let ((files opencode--files-edited-this-turn))
         (setq opencode--files-edited-this-turn nil)
-        (when-let ((hooks (append opencode-files-finished-editing-functions
+        (when-let* ((hooks (append opencode-files-finished-editing-functions
                                   opencode-project-files-finished-editing-functions)))
           (setq opencode--files-finished-editing-queue
                 (append opencode--files-finished-editing-queue

@@ -101,7 +101,7 @@ and saving to CURRENT-BUFFER while running BODY."
                          (pp ,result (current-buffer)))))
                    (let ((,return-var
                           (let ((raw ,result))
-                            (if-let ((normalizer
+                            (if-let* ((normalizer
                                       (or ',normalizer
                                           (alist-get ',name
                                                      opencode-api-normalizers))))

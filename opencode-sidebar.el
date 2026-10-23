@@ -106,7 +106,7 @@
 (defun opencode-sidebar-hide ()
   "Hide the sidebar window."
   (interactive)
-  (when-let ((window (get-buffer-window opencode-sidebar-buffer-name)))
+  (when-let* ((window (get-buffer-window opencode-sidebar-buffer-name)))
     (delete-window window)))
 
 (defun opencode-sidebar-toggle ()

@@ -43,7 +43,7 @@
                             base-directory)
                            ":"
                            (number-to-string (or (flycheck-error-line err) 1))
-                           (when-let ((column (flycheck-error-column err)))
+                           (when-let* ((column (flycheck-error-column err)))
                              (format ":%d" column))
                            ": "
                            (symbol-name (flycheck-error-level err))

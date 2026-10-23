@@ -150,7 +150,7 @@ PASSWORD, when non-nil, is used for Basic authentication."
                    (string-prefix-p "2." (alist-get 'version result)))
           result))
     (plz-http-error
-     (when-let (plz-error (cl-third err))
+     (when-let* ((plz-error (cl-third err)))
        (when (= 401 (plz-response-status (plz-error-response plz-error)))
          (user-error "OpenCode server is running but requires authentication: \
 set `opencode-server-password' or use service discovery"))))
@@ -277,7 +277,7 @@ Connects to an existing server if one is running, otherwise starts a new one
 if `opencode-auto-start-server' is non-nil."
   (interactive)
   (let ((project-dir (expand-file-name
-                      (if-let (proj (project-current))
+                      (if-let* ((proj (project-current)))
                           (project-root proj)
                         default-directory))))
     (opencode-autoconnect (lambda () (opencode-open-project project-dir)))))

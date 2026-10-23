@@ -127,7 +127,7 @@ Assign the overlay EXTRA-PROP with EXTRA-VALUE."
 
 (defun opencode--session-cleanup ()
   "Clean up resources for the current session buffer."
-  (when-let ((process (get-buffer-process (current-buffer))))
+  (when-let* ((process (get-buffer-process (current-buffer))))
     (delete-process process))
   (opencode--delete-temp-files opencode--temp-files)
   (setq opencode--temp-files nil))
@@ -175,9 +175,9 @@ Otherwise add the current buffer's file.
 Otherwise prompt for file in current project."
   (interactive)
   (if (derived-mode-p 'dired-mode)
-      (if-let (files (dired-get-marked-files))
+      (if-let* ((files (dired-get-marked-files)))
           (mapc #'opencode-add-file files)
-        (if-let (file (dired-get-filename nil t))
+        (if-let* ((file (dired-get-filename nil t)))
             (opencode-add-file file)
           (user-error "No file at point, and no marked files")))
     (opencode-add-file (buffer-file-name))))
@@ -281,11 +281,11 @@ Return (TEXT FILES AGENTS SKILLS)."
     (dolist (part (reverse parts))
       (pcase (format "%s" (alist-get 'type part))
         ("text"
-         (when-let ((text (alist-get 'text part)))
+         (when-let* ((text (alist-get 'text part)))
            (unless (string-empty-p text)
              (push text texts))))
         ("file"
-         (when-let ((uri (or (alist-get 'url part)
+         (when-let* ((uri (or (alist-get 'url part)
                              (alist-get 'uri part))))
            (push `((uri . ,uri)
                    (name . ,(or (alist-get 'filename part)
@@ -293,10 +293,10 @@ Return (TEXT FILES AGENTS SKILLS)."
                                 uri)))
                  files)))
         ("agent"
-         (when-let ((name (alist-get 'name part)))
+         (when-let* ((name (alist-get 'name part)))
            (push `((name . ,name)) agents)))
         ("skill"
-         (when-let ((id (alist-get 'id part)))
+         (when-let* ((id (alist-get 'id part)))
            (push `((id . ,id)) skills)))))
     (list (string-join (append (nreverse texts) (list string)) "\n\n")
           (nreverse files)

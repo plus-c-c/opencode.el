@@ -65,7 +65,7 @@ PART-ID is id of PART"
       (when (string-empty-p .text)
         (puthash part-id type opencode-part-type)))
     (opencode--with-session-buffer .sessionID
-      (when-let ((message-parts (assoc-string .messageID opencode-assistant-messages)))
+      (when-let* ((message-parts (assoc-string .messageID opencode-assistant-messages)))
         (let* ((last-type (cadr message-parts))
                (last-part-id (cddr message-parts))
                (current-type (pcase type
@@ -128,7 +128,7 @@ PART-ID is id of PART"
     (let ((comint-input-sender #'opencode--highlight-input))
       (comint-send-input))
     (when .info.agent
-      (when-let ((agent (seq-find (lambda (agent)
+      (when-let* ((agent (seq-find (lambda (agent)
                                     (equal (or (alist-get 'id agent)
                                                (alist-get 'name agent))
                                            .info.agent))
@@ -240,7 +240,7 @@ If CALLBACK is given, it will be called with the session after it is initialized
                 (opencode--replay-session-messages messages)
                 (opencode-api-sessions-status
                   busy-sessions
-                  (if-let (session-status (cdr (assoc-string .id busy-sessions)))
+                  (if-let* ((session-status (cdr (assoc-string .id busy-sessions))))
                       (opencode-session--set-status
                        .id
                        (alist-get 'type session-status))
@@ -279,7 +279,7 @@ bound to the exchange ids at point."
   (declare (indent defun))
   (let ((user-id (car bindings))
         (assistant-id (cadr bindings)))
-    `(when-let (message-number (opencode--current-message-number))
+    `(when-let* ((message-number (opencode--current-message-number)))
        (opencode-api-session-messages (opencode-session-id)
            messages
          (let* ((user-message-index

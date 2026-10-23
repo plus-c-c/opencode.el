@@ -90,12 +90,12 @@ Each element is (display-name . (provider-id provider-name model-id))."
   (interactive)
   (unless opencode-session-agent
     (user-error "not in a session"))
-  (when-let ((model (opencode--annotated-completion
+  (when-let* ((model (opencode--annotated-completion
                      "Model: "
                      (opencode--collect-all-models))))
     (setf (alist-get 'model opencode-session-agent) model
           opencode-last-model model)
-    (when-let ((variant (alist-get 'variant opencode-session-agent)))
+    (when-let* ((variant (alist-get 'variant opencode-session-agent)))
       (unless (assoc-string variant
                             (alist-get 'variants (opencode--current-model)))
         (setq opencode-session-agent
@@ -121,7 +121,7 @@ Each element is (display-name . (provider-id provider-name model-id))."
     (user-error "not in a session"))
   (let ((variants (alist-get 'variants (opencode--current-model))))
     (if variants
-        (when-let ((variant
+        (when-let* ((variant
                     (opencode--annotated-completion
                      "Variant: "
                      (cl-loop for (variant . options) in variants

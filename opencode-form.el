@@ -238,7 +238,7 @@
         (question-id (alist-get 'id data)))
     (opencode-api-session-forms (session-id)
         forms
-      (if-let ((form (seq-find (lambda (form)
+      (if-let* ((form (seq-find (lambda (form)
                                  (or (equal (alist-get 'id form) question-id)
                                      (equal (alist-get 'id (alist-get 'metadata form))
                                             question-id)))
