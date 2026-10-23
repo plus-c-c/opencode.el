@@ -15,8 +15,12 @@ if ((${#test_files[@]} == 0)); then
   exit 1
 fi
 
+escaped_root="${repo_root//\\/\\\\}"
+escaped_root="${escaped_root//\"/\\\"}"
+
 elisp="(progn
-  (add-to-list 'load-path \"${repo_root//\\/\\\\}\")"
+  (package-initialize)
+  (add-to-list 'load-path \"$escaped_root\")"
 
 for test_file in "${test_files[@]}"; do
   escaped="${test_file//\\/\\\\}"
@@ -28,14 +32,7 @@ done
 elisp+="
   (let ((stats (ert-run-tests-batch t)))
     (if (zerop (ert-stats-completed-unexpected stats))
-        \"PASS\"
-      \"FAIL\")))"
+        (progn (message \"PASS\") (kill-emacs 0))
+      (progn (message \"FAIL\") (kill-emacs 1)))))"
 
-result="$(emacsclient --eval "$elisp")"
-
-if [[ "$result" == '"PASS"' ]]; then
-    exit 0
-else
-    echo "Tests failed" >&2
-    exit 1
-fi
+timeout 300 emacs -Q --batch --eval "$elisp"
