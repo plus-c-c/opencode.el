@@ -21,6 +21,7 @@
 (require 'opencode-common)
 (require 'opencode-sessions)
 (require 'transient)
+(require 'pp)
 
 ;;; Path utilities
 
@@ -267,6 +268,18 @@ label to the original output line via its saved marker."
          (always-display (when always (mapconcat #'identity always ", "))))
     (opencode-permission--prompt
      type title always-display #'opencode--send-permission-response)))
+
+(defun opencode-list-saved-permissions ()
+  "Display saved OpenCode V2 permission rules."
+  (interactive)
+  (opencode-api-permission-saved saved
+    (with-current-buffer (get-buffer-create "*OpenCode Saved Permissions*")
+      (let ((inhibit-read-only t))
+        (erase-buffer)
+        (special-mode)
+        (insert (pp-to-string saved))
+        (goto-char (point-min)))
+      (display-buffer (current-buffer)))))
 
 (provide 'opencode-permission)
 ;;; opencode-permission.el ends here

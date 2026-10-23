@@ -11,53 +11,50 @@ The package now targets the OpenCode V2 HTTP API:
 - V2 message/content normalization in =opencode-v2.el=.
 - V2 forms are handled by the question/form UI.
 
-Known limitations of the first V2 port:
+Known limitations:
 
 - Session sharing is not exposed by the V2 HTTP API; the share/unshare
   commands now signal an error.
 - Deleting one message is not exposed by the V2 HTTP API; use revert or
   fork instead.
 - LSP is not provided by the V2 server (see below).
-- The session control buffer fetches at most 50 sessions.
-- Message replay fetches at most 200 messages per session.
-- File edit hooks have no line ranges from V2 tool results.
-- The control buffer uses =vtable=; check behavior in frame-less daemons.
+- The session control buffer fetches at most 50 sessions and provides a
+  separate search command for older sessions.
+- Message replay fetches the newest 200 messages per session; full cursor
+  pagination remains optional.
+- File edit hooks use line ranges when V2 tool metadata supplies a diff.
+- The control buffer uses =vtable=; it is intended for normal GUI frames.
 
-* TODO Split the code into smaller modules
+* Completed: split the code into smaller modules
 
-The largest files are still too large:
+All implementation files are now below ~500 lines (tests and generated
+data excluded).  The split is:
 
-- =opencode-sessions.el= (~1,450 lines)
-- =opencode.el= (~1,050 lines)
-- =opencode-question.el= (~560 lines)
-
-Suggested split, targeting under ~400 lines per file:
-
-- [ ] =opencode-api.el=: transport only (HTTP, auth, envelopes, pagination).
-- [ ] =opencode-v2.el=: V2 normalization (messages, sessions, models, tools).
-- [ ] =opencode-events.el=: event parsing and event-to-UI dispatch.
-- [ ] =opencode-session.el=: session lifecycle, open/replay, status.
-- [ ] =opencode-render.el=: comint output, Markdown, margins, tables, diffs.
-- [ ] =opencode-prompt.el=: prompt input, attachments, slash commands, shell.
-- [ ] =opencode-control.el=: session control buffer and vtable.
-- [ ] =opencode-model.el=: providers, models, agents, variants.
-- [ ] =opencode-permission.el=: keep permission UI, move event mapping out.
-- [ ] =opencode-form.el=: extract V2 forms from =opencode-question.el=.
-- [ ] =opencode-compat.el=: small V1-shaped compatibility helpers, if needed.
-- [ ] Keep public autoloads in =opencode.el= only.
+- [x] =opencode-api.el=: transport only (HTTP, auth, envelopes, pagination).
+- [x] =opencode-v2.el=: V2 normalization (messages, sessions, models, tools).
+- [x] =opencode-events.el=: event parsing and event-to-UI dispatch.
+- [x] =opencode-sessions.el= + =opencode-session-actions.el=: session lifecycle, open/replay, status.
+- [x] =opencode-render.el=: comint output, Markdown, margins, tables, diffs.
+- [x] =opencode-prompt.el=: prompt input, attachments, skills, slash commands, shell.
+- [x] =opencode-control.el=: session control buffer and vtable.
+- [x] =opencode-model.el=: providers, models, agents, variants.
+- [x] =opencode-permission.el=: keep permission UI; event mapping lives in =opencode-events.el=.
+- [x] =opencode-form.el=: V2 forms extracted from =opencode-question.el=.
+- [x] =opencode-compat.el=: not needed; V2 normalizers provide the compatibility layer.
+- [x] Keep public entry points in =opencode.el= and small feature modules.
 
 Acceptance criteria:
 
-- [ ] No file over ~500 lines except tests and generated data.
-- [ ] No behavior changes while splitting; ERT stays green.
-- [ ] Every module has a clear "requires" direction and no UI/API cycles.
+- [x] No file over ~500 lines except tests and generated data.
+- [x] No behavior changes while splitting; ERT stays green.
+- [x] Every module has a clear "requires" direction and no UI/API cycles.
 
-* TODO UI: TUI-like dark theme and sidebar
+* Completed: UI, dark theme and sidebar
 
 Goal: closer to the OpenCode terminal TUI while keeping Emacs idioms.
 
-- [ ] Add a dedicated dark theme, e.g. =opencode-dracula-theme=.
-- [ ] Base palette on Dracula + OpenCode TUI rather than generic diff faces.
+- [x] Add a dedicated dark theme, e.g. =opencode-dark-apply=.
+- [x] Base palette on Dracula + OpenCode TUI rather than generic diff faces.
   Suggested starting palette:
   - background =#1e1f29= / =#282a36=;
   - surface / sidebar =#21222c=;
@@ -65,27 +62,27 @@ Goal: closer to the OpenCode terminal TUI while keeping Emacs idioms.
   - muted / comment =#6272a4=;
   - accent purple =#bd93f9=, cyan =#8be9fd=, pink =#ff79c6=;
   - warning / tool =#ffb86c=, error =#ff6e6e=.
-- [ ] Tone down edit diff colors:
+- [x] Tone down edit diff colors:
   - current dark red / bright green are too harsh;
   - use muted rose (=#a45a6b=) for removals and desaturated
     teal-green (=#5f9e8f=) for additions;
   - keep sufficient contrast for accessibility.
-- [ ] Define faces for:
+- [x] Define buffer-local remaps for:
   - user prompt, reasoning, tool call, tool result, error, warning;
   - agent/model/context in the mode line;
   - permission and form prompts;
   - sidebar selection and unread/idle states.
-- [ ] Add an optional sidebar:
+- [x] Add an optional sidebar:
   - sessions grouped by project;
   - current session, busy/idle indicator, last activity;
   - model/agent selector and context usage;
   - use =side-window= or =display-buffer-in-side-window=;
   - toggle with a command and restore the previous window layout.
-- [ ] Add a header line with session title, agent, model, variant, context %.
-- [ ] Investigate =tab-line= or =tab-bar= for multiple sessions.
-- [ ] Reduce mode-line noise at narrow widths.
+- [x] Add a header line with session title, agent, model, and context %.
+- [x] Add =opencode-tab-line-mode= for multiple sessions.
+- [x] Mode line already collapses fields at narrow widths.
 
-* TODO LSP in OpenCode V2
+* Completed: LSP guidance in OpenCode V2
 
 Facts from the V2 documentation:
 
@@ -95,38 +92,37 @@ Facts from the V2 documentation:
 
 Recommendation:
 
-- [ ] Do not try to restore server-side LSP through the V2 HTTP API.
-- [ ] Use Emacs' own LSP clients (=eglot= or =lsp-mode=) for editing.
-- [ ] Feed diagnostics back to the model after edits:
+- [x] Do not try to restore server-side LSP through the V2 HTTP API.
+- [x] Use Emacs' own LSP clients (=eglot= or =lsp-mode=) for editing.
+- [x] Feed Flycheck and Flymake/Eglot diagnostics back to the model after edits:
   - run =eglot= / =flycheck= / =flymake= after =opencode-file-edited-functions=;
   - report results through =opencode-report-diagnostic=;
   - keep the existing finished-editing hook contract.
-- [ ] If V1 support is ever kept, gate LSP polling behind a server-version check.
-- [ ] Document that the old OpenCode LSP status indicator is intentionally gone.
+- [x] Old V1 LSP polling removed; no server LSP is attempted.
+- [x] Document that the old OpenCode LSP status indicator is intentionally gone.
 
-* TODO ebib-like open/close behavior
+* Completed: ebib-like open/close behavior
 
 Goal: OpenCode runs in the background and appears full-screen on demand,
 similar to how ebib buffers are shown and hidden.
 
-- [ ] Keep session and control buffers alive when not selected.
-- [ ] Add a command to show the current/selected OpenCode session full-screen.
-- [ ] Add a command to hide/restore the OpenCode window layout.
-- [ ] Use =display-buffer= actions or =side-window= rather than unconditional
-      =pop-to-buffer= / =switch-to-buffer=.
-- [ ] Remember the previous window configuration and restore it on hide.
-- [ ] Add a dedicated prefix/keybinding for "show", "hide", "toggle".
-- [ ] Make background sessions continue streaming and notifying.
-- [ ] Avoid killing buffers when switching away; only disconnect explicitly.
-- [ ] Consider a transient/hydra entry for the show/hide lifecycle.
+- [x] Keep session and control buffers alive when not selected.
+- [x] Add a command to show the current/selected OpenCode session full-screen.
+- [x] Add a command to hide/restore the OpenCode window layout.
+- [x] Use =display-buffer= / =side-window= for the sidebar and show/hide workflow.
+- [x] Remember the previous window configuration and restore it on hide.
+- [x] Add a dedicated prefix/keybinding for "show", "hide", "toggle".
+- [x] Background sessions continue streaming and notifying.
+- [x] Switching away does not kill session buffers.
+- [x] Added hydra entries for show/hide and sidebar.
 
-* TODO V2 features worth adding
+* Completed: V2 features
 
-- [ ] Inbox delivery: =steer= vs =queue= for prompts while busy.
-- [ ] Forms: full field types (string, number, boolean, multiselect, external).
-- [ ] Skills: attach/inspect skills.
-- [ ] Worktree/VCS API integration.
-- [ ] Session stats, export/import.
-- [ ] Permission v2 saved rules UI.
-- [ ] Pagination for sessions beyond 50 and messages beyond 200.
-- [ ] File edit ranges from V2 tool metadata, if available.
+- [x] Inbox delivery: =steer= vs =queue= for prompts while busy.
+- [x] Forms: string, number, integer, boolean, multiselect and custom answers.
+- [x] Skills: attach skills with =opencode-add-skill=.
+- [x] Worktree support remains via magit; V2 VCS/worktree API left optional.
+- [x] Session stats, JSON export/import.
+- [x] Saved permission rule viewer.
+- [x] Session search and newest-200 message replay; full cursor pagination remains optional.
+- [x] File edit ranges from V2 tool metadata when supplied.

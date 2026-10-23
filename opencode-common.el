@@ -16,6 +16,7 @@
 (require 'map)
 (require 'notifications)
 (require 'opencode-flycheck)
+(require 'opencode-flymake)
 (require 'project)
 (require 'savehist)
 
@@ -77,6 +78,14 @@ for title, message, variant (error/warning/info/success), and duration"
   :type 'boolean
   :group 'opencode)
 
+(defcustom opencode-prompt-delivery "steer"
+  "V2 inbox delivery mode for prompts.
+One of \"steer\", \"queue\", or nil to use the server default."
+  :type '(choice (const :tag "Steer" "steer")
+                 (const :tag "Queue" "queue")
+                 (const :tag "Server default" nil))
+  :group 'opencode)
+
 (defcustom opencode-file-edited-functions
   '(opencode--fix-parens
     opencode--reload-elisp-file)
@@ -91,7 +100,8 @@ edits, END-LINE is nil."
 
 (defcustom opencode-files-finished-editing-functions
   '(opencode--indent-files
-    opencode--flycheck-edited-files)
+    opencode--flycheck-edited-files
+    opencode--flymake-edited-files)
   "Run hooks after opencode finishes editing files.
 This is an abnormal hook.  Each entry receives one argument, FILES,
 the list of file paths from completed write, edit, or apply_patch tool calls.

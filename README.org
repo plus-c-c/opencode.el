@@ -7,6 +7,35 @@ gone; the package now uses the V2 service/API and event stream.  See
 [[file:TODO.org][TODO.org]] for remaining work, including UI theming, a
 sidebar, LSP guidance, and the ebib-like show/hide workflow.
 
+* V2 notes
+- OpenCode V2 no longer exposes session sharing or single-message deletion
+  over its HTTP API.  Use fork/revert for the latter.
+- V2 does not run language servers, expose LSP tools, or produce LSP
+  diagnostics.  The old =/lsp= indicator is intentionally gone.  Keep using
+  Emacs' own LSP client (=eglot= or =lsp-mode=); Flymake/Flycheck diagnostics
+  can be sent to the model with =opencode-send-diagnostics= (=C-c C-d= in a
+  session buffer).
+- The dark palette is applied buffer-locally with the Dracula-inspired
+  =opencode-dark-apply=.  Toggle it with =opencode-dark-toggle=.
+- =opencode-sidebar-toggle= shows sessions in a right side window.
+- =opencode-show= / =opencode-hide= / =opencode-toggle= provide an
+  ebib-like background/full-frame workflow.
+
+* V2 commands
+| Command | Description |
+|---------+-------------|
+| =opencode-sidebar-toggle= | Show/hide the session sidebar |
+| =opencode-show= / =opencode-hide= / =opencode-toggle= | Background/full-frame workflow |
+| =opencode-search-sessions= | Search all sessions in the current project |
+| =opencode-add-skill= | Attach a V2 skill to the next prompt |
+| =opencode-toggle-prompt-delivery= | Cycle steer/queue/server-default delivery |
+| =opencode-send-diagnostics= | Send Flycheck/Flymake diagnostics to the session |
+| =opencode-session-stats= | Show V2 session statistics |
+| =opencode-export-session= / =opencode-import-session= | JSON session transfer |
+| =opencode-list-saved-permissions= | Show saved permission rules |
+| =opencode-dark-toggle= | Toggle the buffer-local dark palette |
+| =opencode-tab-line-mode= | Show sessions in the tab line |
+
 An emacs UI to [[https://opencode.ai/][opencode]] - an open source AI coding agent. This provides two sets
 of advantages over the official TUI:
 

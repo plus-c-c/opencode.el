@@ -212,9 +212,10 @@ Return nil for message types the UI does not render."
     (_ nil)))
 
 (defun opencode-v2--session-messages (result)
-  "Normalize a V2 session-message page RESULT."
-  (delq nil (mapcar #'opencode-v2--message
-                    (or (opencode-v2--data result) '()))))
+  "Normalize a newest-first V2 session-message page RESULT.
+The UI replays messages chronologically, so reverse the page."
+  (reverse (delq nil (mapcar #'opencode-v2--message
+                             (or (opencode-v2--data result) '())))))
 
 (defun opencode-v2--status (status)
   "Convert a V2 STATUS object to the V1 busy/idle/retry string."
