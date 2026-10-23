@@ -33,7 +33,10 @@
 
 
 (define-derived-mode opencode-session-control-mode special-mode "Sessions"
-  "Opencode session control panel mode.")
+  "Opencode session control panel mode."
+  (visual-line-mode -1)
+  (setq-local truncate-lines t
+              word-wrap nil))
 
 
 (defun opencode--tab-dispatch ()
@@ -51,6 +54,33 @@
         (not opencode-session-control-verbose))
   (opencode-sessions-redisplay))
 
+
+(defun opencode-control--columns ()
+  "Return vtable columns appropriate for the visible control window."
+  (let* ((window (or (get-buffer-window (current-buffer))
+                     (selected-window)))
+         (width (window-width window)))
+    (cond
+     ((< width 70)
+      '("Title"
+        (:name "Updated" :width 10
+         :formatter opencode--format-time-ago
+         :primary ascend)))
+     ((< width 100)
+      '("Title"
+        (:name "Agent" :width 8)
+        (:name "Updated" :width 10
+         :formatter opencode--format-time-ago
+         :primary ascend)))
+     (t
+      '("Title"
+        (:name "Branch" :min-width 6)
+        (:name "Last Updated" :width 12
+         :formatter opencode--format-time-ago
+         :primary ascend)
+        (:name "Agent" :width 10)
+        (:name "Created at" :width 10
+         :formatter opencode--format-time-ago))))))
 
 (defun opencode-sessions-redisplay ()
   "Refresh the session display table for DIRECTORY."
@@ -74,14 +104,7 @@
       (erase-buffer)
       (if sessions
           (make-vtable
-           :columns '("Title"
-                      (:name "Branch" :min-width 6)
-                      (:name "Last Updated" :width 12
-                       :formatter opencode--format-time-ago
-                       :primary ascend)
-                      (:name "Agent" :width 10)
-                      (:name "Created at" :width 10
-                       :formatter opencode--format-time-ago))
+           :columns (opencode-control--columns)
            :objects sessions
            :actions '("x" opencode-kill-session
                       "R" opencode-rename-session
@@ -98,7 +121,8 @@
                                                       (magit-get-current-branch)
                                                       cache)))
                                      "-"))
-                         ("Last Updated" (opencode--time-ago object 'updated))
+                         ((or "Last Updated" "Updated")
+                          (opencode--time-ago object 'updated))
                          ("Agent" (or .agent "-"))
                          ("Created at" (opencode--time-ago object 'created)))))
            :separator-width 3

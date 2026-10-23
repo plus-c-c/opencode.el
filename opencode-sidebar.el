@@ -25,11 +25,13 @@
 
 (define-derived-mode opencode-sidebar-mode tabulated-list-mode "OpenCode Sidebar"
   "Major mode for the OpenCode session sidebar."
+  (visual-line-mode -1)
+  (setq-local truncate-lines t
+              word-wrap nil)
   (setq tabulated-list-format
-        [("Session" 28 t)
-         ("Agent" 10 t)
-         ("Status" 8 t)
-         ("Updated" 10 t)]
+        [("Session" 20 t)
+         ("Agent" 6 t)
+         ("Updated" 9 t)]
         tabulated-list-sort-key '("Updated" . t)
         tabulated-list-padding 1)
   (tabulated-list-init-header))
@@ -66,24 +68,24 @@
                   (mapcar
                    (lambda (session)
                      (let-alist session
-                       (list (alist-get 'id session)
-                             (vector (or .title "-")
-                                     (or .agent "-")
-                                     (let ((buffer
-                                            (seq-find
-                                             (lambda (buf)
-                                               (with-current-buffer buf
-                                                 (and (derived-mode-p 'opencode-session-mode)
-                                                      (equal opencode-session-id
-                                                             (alist-get 'id session)))))
-                                             (buffer-list))))
-                                       (if buffer
-                                           (with-current-buffer buffer
-                                             (if (string= opencode-session-status "busy")
-                                                 "busy" "idle"))
-                                         "closed"))
-                                     (opencode--format-time-ago
-                                      (opencode--time-ago session 'updated))))))
+                       (let ((buffer
+                              (seq-find
+                               (lambda (buf)
+                                 (with-current-buffer buf
+                                   (and (derived-mode-p 'opencode-session-mode)
+                                        (equal opencode-session-id
+                                               (alist-get 'id session)))))
+                               (buffer-list))))
+                         (list (alist-get 'id session)
+                               (vector (concat
+                                        (if (and buffer
+                                                 (with-current-buffer buffer
+                                                   (string= opencode-session-status "busy")))
+                                            "● " "○ ")
+                                        (or .title "-"))
+                                       (or .agent "-")
+                                       (opencode--format-time-ago
+                                        (opencode--time-ago session 'updated)))))))
                    sessions))
             (tabulated-list-print t)))))))
 
