@@ -58,9 +58,17 @@ Goal: closer to the OpenCode terminal TUI while keeping Emacs idioms.
 
 - [ ] Add a dedicated dark theme, e.g. =opencode-dracula-theme=.
 - [ ] Base palette on Dracula + OpenCode TUI rather than generic diff faces.
+  Suggested starting palette:
+  - background =#1e1f29= / =#282a36=;
+  - surface / sidebar =#21222c=;
+  - foreground =#f8f8f2=;
+  - muted / comment =#6272a4=;
+  - accent purple =#bd93f9=, cyan =#8be9fd=, pink =#ff79c6=;
+  - warning / tool =#ffb86c=, error =#ff6e6e=.
 - [ ] Tone down edit diff colors:
   - current dark red / bright green are too harsh;
-  - use muted rose for removals and desaturated green/teal for additions;
+  - use muted rose (=#a45a6b=) for removals and desaturated
+    teal-green (=#5f9e8f=) for additions;
   - keep sufficient contrast for accessibility.
 - [ ] Define faces for:
   - user prompt, reasoning, tool call, tool result, error, warning;
