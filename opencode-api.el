@@ -224,6 +224,7 @@ body when it normally would (POST PATCH).  NORMALIZER is applied to the response
      (post send-message "/api/session/%s/prompt")
      (message-details "/api/session/%s/message/%s")
      (sessions "/api/session?limit=50&directory=%s" opencode-v2--sessions)
+     (sessions-all "/api/session?limit=1000" opencode-v2--sessions)
      (session-search "/api/session?limit=200&search=%s&directory=%s"
                      opencode-v2--sessions)
      (sessions-status "/api/session/active" opencode-v2--active-status)

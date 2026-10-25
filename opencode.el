@@ -329,15 +329,13 @@ Run ON-CONNECT after connected."
 
 ;;;###autoload
 (defun opencode ()
-  "Open opencode sessions control buffer for the current project directory.
-Connects to an existing server if one is running, otherwise starts a new one
-if `opencode-auto-start-server' is non-nil."
+  "Open the OpenCode session control buffer for the user's home directory.
+This deliberately ignores the current project so `C-c o o' always shows
+all sessions under HOME.  Connects to an existing server if one is running,
+otherwise starts a new one if `opencode-auto-start-server' is non-nil."
   (interactive)
-  (let ((project-dir (expand-file-name
-                      (if-let* ((proj (project-current)))
-                          (project-root proj)
-                        default-directory))))
-    (opencode-autoconnect (lambda () (opencode-open-project project-dir)))))
+  (let ((home (expand-file-name "~/")))
+    (opencode-autoconnect (lambda () (opencode-open-project home t)))))
 
 (defun opencode-connect (host port on-connect)
   "Connect to opencode server, prompting for HOST and PORT.
@@ -347,13 +345,16 @@ Call ON-CONNECT once connected."
          (read-number "Port: " opencode-port)))
   (opencode-connect-url (format "http://%s:%d" host port) on-connect))
 
-(defun opencode-open-project (directory)
-  "Open sessions control buffer for DIRECTORY."
+(defun opencode-open-project (directory &optional home)
+  "Open sessions control buffer for DIRECTORY.
+When HOME is non-nil, list all sessions below the user's home directory
+instead of only DIRECTORY."
   (opencode--download-slash-commands directory)
   (let ((buffer-name (format "*OpenCode Sessions in %s*" directory)))
     (unless (get-buffer buffer-name)
       (with-current-buffer (get-buffer-create buffer-name)
         (opencode-session-control-mode)
+        (setq-local opencode-session-control-home home)
         (setq default-directory directory)
         (opencode-api-current-project project
           (let-alist project
@@ -361,8 +362,11 @@ Call ON-CONNECT once connected."
                   (cons (current-buffer)
                         (seq-filter #'buffer-live-p
                                     (map-elt opencode--session-control-buffers
-                                             .id))))))
-        (opencode-sessions-redisplay)))
+                                             .id))))))))
+    (with-current-buffer buffer-name
+      (setq-local opencode-session-control-home home)
+      (setq default-directory directory)
+      (opencode-sessions-redisplay))
     (pop-to-buffer buffer-name)))
 
 (defvar opencode-worktree-directory (expand-file-name "~/opencode_worktrees/")

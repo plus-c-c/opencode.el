@@ -27,6 +27,9 @@
 (defvar-local opencode-session-control-verbose nil
   "Toggle whether to display subagents in session control buffer.")
 
+(defvar-local opencode-session-control-home nil
+  "When non-nil, this control buffer shows all sessions under HOME.")
+
 
 (defvar-local opencode-session-control-redisplaying nil
   "Non-nil while a session control refresh is in flight.")
@@ -84,53 +87,70 @@
         (:name "Created at" :width 10
          :formatter opencode--format-time-ago))))))
 
+(defun opencode-control--home-session-p (session)
+  "Return non-nil when SESSION belongs to the user's home tree."
+  (let* ((home (directory-file-name (expand-file-name "~/")))
+         (directory (directory-file-name
+                     (or (alist-get 'directory session) ""))))
+    (or (equal directory home)
+        (string-prefix-p (concat home "/") directory))))
+
+(defun opencode-control--render-sessions (sessions)
+  "Render SESSIONS in the current session-control buffer."
+  (setq opencode-session-control-redisplaying nil)
+  (let ((inhibit-read-only t)
+        (inhibit-redisplay t)
+        (point (point))
+        (sessions (if opencode-session-control-verbose
+                      sessions
+                    (seq-remove (lambda (session)
+                                  (alist-get 'parentID session))
+                                sessions)))
+        (cache (make-hash-table :test #'equal)))
+    (erase-buffer)
+    (if sessions
+        (make-vtable
+         :columns (opencode-control--columns)
+         :objects sessions
+         :actions '("x" opencode-kill-session
+                    "R" opencode-rename-session
+                    "RET" opencode-open-session-same-window
+                    "o" opencode-open-session-same-window)
+         :getter (lambda (object column vtable)
+                   (let-alist object
+                     (pcase (vtable-column vtable column)
+                       ("Title" (or .title "-"))
+                       ("Branch" (if (and .directory (file-exists-p .directory))
+                                     (let ((default-directory .directory))
+                                       (or (gethash .directory cache)
+                                           (puthash .directory
+                                                    (magit-get-current-branch)
+                                                    cache)))
+                                   "-"))
+                       ((or "Last Updated" "Updated")
+                        (opencode--time-ago object 'updated))
+                       ("Agent" (or .agent "-"))
+                       ("Created at" (opencode--time-ago object 'created)))))
+         :separator-width 3
+         :keymap opencode-session-control-mode-map)
+      (insert "No sessions in " (or default-directory "unknown directory")))
+    (goto-char point)))
+
 (defun opencode-sessions-redisplay ()
-  "Refresh the session display table for DIRECTORY."
+  "Refresh the session display table for the current scope."
   (interactive)
   (unless opencode-session-control-redisplaying
     (setq opencode-session-control-redisplaying t)
-    (opencode-api-sessions
-        ((url-hexify-string
-          (directory-file-name (expand-file-name default-directory))))
-        sessions
-      (setq opencode-session-control-redisplaying nil)
-      (let ((inhibit-read-only t)
-          (inhibit-redisplay t)
-          (point (point))
-          (sessions (if opencode-session-control-verbose
-                        sessions
-                      (seq-remove (lambda (session)
-                                    (alist-get 'parentID session))
-                                  sessions)))
-          (cache (make-hash-table :test #'equal)))
-      (erase-buffer)
-      (if sessions
-          (make-vtable
-           :columns (opencode-control--columns)
-           :objects sessions
-           :actions '("x" opencode-kill-session
-                      "R" opencode-rename-session
-                      "RET" opencode-open-session-same-window
-                      "o" opencode-open-session-same-window)
-           :getter (lambda (object column vtable)
-                     (let-alist object
-                       (pcase (vtable-column vtable column)
-                         ("Title" (or .title "-"))
-                         ("Branch" (if (and .directory (file-exists-p .directory))
-                                       (let ((default-directory .directory))
-                                         (or (gethash .directory cache)
-                                             (puthash .directory
-                                                      (magit-get-current-branch)
-                                                      cache)))
-                                     "-"))
-                         ((or "Last Updated" "Updated")
-                          (opencode--time-ago object 'updated))
-                         ("Agent" (or .agent "-"))
-                         ("Created at" (opencode--time-ago object 'created)))))
-           :separator-width 3
-           :keymap opencode-session-control-mode-map)
-        (insert "No sessions in " (or default-directory "unknown directory")))
-      (goto-char point)))))
+    (if opencode-session-control-home
+        (opencode-api-sessions-all
+            sessions
+          (opencode-control--render-sessions
+           (seq-filter #'opencode-control--home-session-p sessions)))
+      (opencode-api-sessions
+          ((url-hexify-string
+            (directory-file-name (expand-file-name default-directory))))
+          sessions
+        (opencode-control--render-sessions sessions)))))
 
 
 (provide 'opencode-control)
