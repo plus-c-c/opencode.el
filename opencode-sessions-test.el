@@ -291,3 +291,8 @@
 
 (provide 'opencode-sessions-test)
 ;;; opencode-sessions-test.el ends here
+
+(ert-deftest opencode-session-c-return-newline-binding-test ()
+  "C-RET inserts a prompt newline instead of sending the message."
+  (should (eq (lookup-key opencode-session-mode-map (kbd "C-<return>"))
+              #'opencode-insert-newline)))

@@ -304,6 +304,14 @@ Return (TEXT FILES AGENTS SKILLS)."
           (nreverse skills))))
 
 
+(defun opencode-insert-newline ()
+  "Insert a newline in the OpenCode prompt without sending the message.
+This mirrors the TUI's multi-line input behavior; RET still sends."
+  (interactive)
+  (unless (comint-after-pmark-p)
+    (user-error "Not in the OpenCode prompt"))
+  (insert "\n"))
+
 (defun opencode--send-input (_proc string)
   "Send STRING as input to current opencode session."
   (opencode--highlight-input)

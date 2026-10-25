@@ -179,8 +179,13 @@ Retain one line of context for headers whose delimiter has yet to arrive."
 
 
 (defun opencode--show-prompt ()
-  "Highlight the prompt after displaying output."
+  "Highlight the prompt after displaying output.
+Make sure a response that did not end with a newline cannot leave its
+last line attached to the user's input line."
   (let ((start (opencode--session-process-position)))
+    (unless (or (bobp) (eq (char-before start) ?\n))
+      (opencode--output "\n"))
+    (setq start (opencode--session-process-position))
     (opencode--output "> ")
     (let ((ov (make-overlay start (opencode--session-process-position))))
       (overlay-put ov 'invisible t)))

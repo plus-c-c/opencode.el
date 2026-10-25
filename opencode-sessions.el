@@ -26,6 +26,7 @@
 
 (defvar opencode-session-mode-map
   (define-keymap
+    "C-<return>" 'opencode-insert-newline
     "C-c C-y" 'opencode-yank-code-block
     "C-c Y" 'opencode-copy-conversation
     "C-c C-c" 'opencode-abort-session
