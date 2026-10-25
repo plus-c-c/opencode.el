@@ -18,6 +18,7 @@
 (require 'opencode-api)
 (require 'opencode-common)
 (require 'opencode-convert)
+(require 'opencode-fold)
 (require 'opencode-format-tool-calls)
 (require 'project)
 (require 'url-util)
@@ -29,6 +30,9 @@
     "C-<return>" 'opencode-insert-newline
     "C-c C-y" 'opencode-yank-code-block
     "C-c Y" 'opencode-copy-conversation
+    "C-c C-t" 'opencode-fold-toggle-thinking
+    "C-c C-e" 'opencode-fold-toggle-tool-details
+    "C-c C-f" 'opencode-fold-toggle-all
     "C-c C-c" 'opencode-abort-session
     "C-c C-p" 'opencode-respond-permission
     "C-c x" 'opencode-kill-session
@@ -323,6 +327,8 @@ POP-TO-BUFFER controls whether to pop to or switch to the session buffer."
                                  '(button category action help-echo)))
   (visual-line-mode)
   (cursor-intangible-mode)
+  (opencode-fold-init)
+  (add-hook 'after-change-functions #'opencode--input-margin-after-change nil t)
   (yank-media-handler "\\`image/" #'opencode--yank-image))
 
 (defun opencode-yank-code-block ()

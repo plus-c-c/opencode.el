@@ -8,6 +8,7 @@
 
 (require 'opencode-api)
 (require 'opencode-common)
+(require 'opencode-fold)
 (require 'magit)
 (require 'vtable)
 (require 'url-util)
@@ -40,11 +41,12 @@
 
 
 (defun opencode--tab-dispatch ()
-  "Cycle session agent, or move to next button if point is on one."
+  "Toggle a fold at point, else cycle agent or move to next button."
   (interactive)
-  (if (button-at (point))
-      (forward-button 1)
-    (call-interactively #'opencode-cycle-session-agent)))
+  (unless (opencode-fold-toggle-at-point)
+    (if (button-at (point))
+        (forward-button 1)
+      (call-interactively #'opencode-cycle-session-agent))))
 
 
 (defun opencode-session-control-toggle-verbose ()

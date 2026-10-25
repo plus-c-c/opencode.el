@@ -18,6 +18,7 @@
 
 (defun opencode--highlight-input (&optional _proc _string)
   "Highlight last prompt input."
+  (opencode--clear-input-margin)
   (opencode--add-margin comint-last-input-start
                         comint-last-input-end
                         'opencode-request-margin-highlight))

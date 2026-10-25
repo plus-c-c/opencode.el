@@ -9,6 +9,7 @@
 (require 'opencode-common)
 (require 'opencode-format-tool-calls)
 (require 'opencode-diff-parser)
+(require 'opencode-fold)
 
 (defun opencode--fontify-code-block (mode beg end)
   "Collect MODE faces for BEG..END without sharing session text properties."
@@ -178,20 +179,39 @@ Retain one line of context for headers whose delimiter has yet to arrive."
     (opencode--output "\n")))
 
 
+(defvar-local opencode--input-margin-overlay nil
+  "Margin overlay covering the current, still-editable prompt input.")
+
+(defun opencode--clear-input-margin ()
+  "Remove the live margin overlay from the current prompt."
+  (when (overlayp opencode--input-margin-overlay)
+    (delete-overlay opencode--input-margin-overlay))
+  (setq opencode--input-margin-overlay nil))
+
+(defun opencode--input-margin-after-change (&rest _)
+  "Keep the live prompt margin in sync with insertions and deletions."
+  (when (and (overlayp opencode--input-margin-overlay)
+             (overlay-buffer opencode--input-margin-overlay))
+    (let ((start (overlay-start opencode--input-margin-overlay))
+          (end (point-max)))
+      (when (> end start)
+        (move-overlay opencode--input-margin-overlay start end)))))
+
 (defun opencode--show-prompt ()
   "Highlight the prompt after displaying output.
 Make sure a response that did not end with a newline cannot leave its
 last line attached to the user's input line."
+  (opencode--clear-input-margin)
   (let ((start (opencode--session-process-position)))
     (unless (or (bobp) (eq (char-before start) ?\n))
       (opencode--output "\n"))
     (setq start (opencode--session-process-position))
     (opencode--output "> ")
     (let ((ov (make-overlay start (opencode--session-process-position))))
-      (overlay-put ov 'invisible t)))
-  (opencode--add-margin (car comint-last-prompt)
-                        (cdr comint-last-prompt)
-                        'opencode-request-margin-highlight))
+      (overlay-put ov 'invisible t))
+    (setq opencode--input-margin-overlay
+          (opencode--add-margin start (point-max)
+                                'opencode-request-margin-highlight))))
 
 
 (defface opencode-request-margin-highlight
@@ -213,33 +233,40 @@ last line attached to the user's input line."
 
 
 (defun opencode--add-margin (start end face)
-  "Display margin from START (inclusive) to END (exclusive) with FACE."
-  (let ((ov (make-overlay start (1- end)))
-        (margin (propertize ">" 'display
-                            `((margin left-margin)
-                              ,(propertize "▎" 'face face)))))
-    (overlay-put ov 'line-prefix margin)
-    (overlay-put ov 'wrap-prefix margin)))
+  "Display margin from START (inclusive) to END (exclusive) with FACE.
+Return the margin overlay."
+  (when (> end start)
+    (let ((ov (make-overlay start (1- end)))
+          (margin (propertize ">" 'display
+                              `((margin left-margin)
+                                ,(propertize "▎" 'face face)))))
+      (overlay-put ov 'line-prefix margin)
+      (overlay-put ov 'wrap-prefix margin)
+      ov)))
 
 
 (defun opencode--insert-block-with-margin (text face)
   "Insert TEXT with FACE margin highlight."
   (unless (string-empty-p text)
-    (let ((beginning (opencode--session-process-position)))
+    (let ((beginning (opencode--session-process-position))
+          (type (pcase face
+                  ('opencode-reasoning-margin-highlight 'reasoning)
+                  ('opencode-tool-margin-highlight 'tool))))
       (opencode--output text)
-      (opencode--add-margin beginning (save-excursion
-                                        (goto-char (opencode--session-process-position))
-                                        (skip-chars-backward "\r\n[:blank:]")
-                                        ;; Markdown hides closing fences, so
-                                        ;; their otherwise visible margin would
-                                        ;; appear as an extra highlighted line.
-                                        (let ((inhibit-field-text-motion t))
-                                          (beginning-of-line))
-                                        (unless (looking-at-p "[`~]\\{3,\\}[[:blank:]]*$")
-                                          (goto-char (opencode--session-process-position))
-                                          (skip-chars-backward "\r\n[:blank:]"))
-                                        (point))
-                            face))))
+      (let* ((end (save-excursion
+                    (goto-char (opencode--session-process-position))
+                    (skip-chars-backward "\r\n[:blank:]")
+                    ;; Markdown hides closing fences, so their otherwise visible
+                    ;; margin would appear as an extra highlighted line.
+                    (let ((inhibit-field-text-motion t))
+                      (beginning-of-line))
+                    (unless (looking-at-p "[`~]\\{3,\\}[[:blank:]]*$")
+                      (goto-char (opencode--session-process-position))
+                      (skip-chars-backward "\r\n[:blank:]"))
+                    (point)))
+             (margin (opencode--add-margin beginning end face)))
+        (when type
+          (opencode-fold-register beginning end type margin))))))
 
 
 (defun opencode--insert-reasoning-block (text)
@@ -300,8 +327,10 @@ last line attached to the user's input line."
                    (and (member .tool '("bash" "shell"))
                         (not .state.input.description)))
                .state.output)
-      (opencode--output (opencode--fenced-block .state.output "text"))
-      (opencode--output "\n"))))
+      (let ((start (opencode--session-process-position)))
+        (opencode--output (opencode--fenced-block .state.output "text"))
+        (opencode--output "\n")
+        (opencode-fold-extend 'tool start (opencode--session-process-position))))))
 
 
 (provide 'opencode-render)

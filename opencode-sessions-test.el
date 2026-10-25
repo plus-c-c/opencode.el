@@ -35,6 +35,9 @@
         (with-current-buffer buffer
           (setq default-directory (file-name-directory (locate-library "opencode-sessions")))
           (opencode-session-mode)
+          ;; This test checks fontification and margins, not folded visibility.
+          (setq-local opencode-fold-thinking nil
+                      opencode-fold-tool-details nil)
           (font-lock-mode 1)
           (let ((process (start-process "opencode-markdown-test" buffer nil)))
             (unwind-protect
