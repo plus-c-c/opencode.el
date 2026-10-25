@@ -131,10 +131,16 @@ add to =packages.el= and run =doom sync=
 
 * Connecting
 ** Automatic
-=M-x opencode= will try to connect to an opencode server at
-=opencode-host:opencode-port= or will start a headless opencode server if one
-isn't already running. Then it opens a [[#6679896c-5b9d-4e87-9e03-6ed060dec278][Session Management]] buffer for the current
-project.
+=M-x opencode= first reuses the registered V2 background service, then a
+healthy server at =opencode-host:opencode-port=.  If neither is available and
+=opencode-auto-start-server= is non-nil, it starts the shared background
+service with =opencode service start= instead of creating a second server on
+a fixed port.  Then it opens a
+[[#6679896c-5b9d-4e87-9e03-6ed060dec278][Session Management]] buffer for the current project.
+
+If an unrelated server is listening on =opencode-host:opencode-port= but
+requires authentication, automatic probing treats it as unavailable and starts
+the shared service instead of signaling an error during startup.
 ** Manual
 =M-x opencode-connect= will prompt for the host and port of an opencode server to
 connect to.
@@ -288,7 +294,9 @@ fix, and set both =comint-scroll-show-maximum-output= and
 
 * Configuration
 - =opencode-command= and =opencode-serve-command= can be used to configure how to
-  run a headless opencode server
+  run a headless opencode server; with service discovery enabled, automatic
+  startup uses =<opencode-command> service start= unless a custom
+  =opencode-serve-command= is set
 - =opencode-host= and =opencode-port= are the default host and port to use with =M-x opencode-connect=
 - =opencode-server-username= and =opencode-server-password= configure how to authenticate to the opencode server
 - the =opencode-faces= group configures faces used when displaying sessions

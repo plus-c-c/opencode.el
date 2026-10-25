@@ -102,6 +102,8 @@ This is an abnormal hook. Each function receives one argument, SESSION-ID."
 
 (defvar opencode--process nil
   "Opencode server process when started by Emacs.")
+(defvar opencode--service-start-process nil
+  "Short-lived process used to start the OpenCode background service.")
 
 ;; so invisible prompt "> " doesn't make whole prompt invisible
 (add-to-list 'comint--prompt-rear-nonsticky 'invisible)
@@ -132,9 +134,13 @@ This is an abnormal hook. Each function receives one argument, SESSION-ID."
           (json-parse-buffer :object-type 'alist))
       (error nil))))
 
-(defun opencode--api-url-running-p (url &optional password)
+(defun opencode--api-url-running-p (url &optional password noerror)
   "Return the server info when a V2 server is healthy at URL.
-PASSWORD, when non-nil, is used for Basic authentication."
+PASSWORD, when non-nil, is used for Basic authentication.
+When NOERROR is non-nil, an authentication failure just returns nil
+instead of signaling `user-error'.  This is used while probing for a
+server to avoid breaking startup when an unrelated authenticated
+server is listening on the configured port."
   (opencode--ensure-local-noproxy url)
   (condition-case err
       (let* ((opencode-server-password (or password opencode-server-password))
@@ -152,14 +158,18 @@ PASSWORD, when non-nil, is used for Basic authentication."
     (plz-http-error
      (when-let* ((plz-error (cl-third err)))
        (when (= 401 (plz-response-status (plz-error-response plz-error)))
-         (user-error "OpenCode server is running but requires authentication: \
-set `opencode-server-password' or use service discovery"))))
+         (unless noerror
+           (user-error "OpenCode server is running but requires authentication: \
+set `opencode-server-password' or use service discovery")))))
     (error nil)))
 
 (defun opencode--server-running-p ()
-  "Return non-nil if a compatible OpenCode server is running at configured host and port."
+  "Return non-nil if a compatible OpenCode server is running at configured host and port.
+An authentication failure is treated as unavailable here; callers can
+then start the shared background service instead of failing startup."
   (opencode--api-url-running-p
-   (format "http://%s:%d" opencode-host opencode-port)))
+   (format "http://%s:%d" opencode-host opencode-port)
+   nil t))
 
 (defun opencode--service-info ()
   "Return healthy V2 service information from `opencode-service-file'."
@@ -167,7 +177,7 @@ set `opencode-server-password' or use service discovery"))))
     (when-let* ((info (opencode--read-service-file))
                 (url (alist-get 'url info))
                 (password (alist-get 'password info)))
-      (when (opencode--api-url-running-p url password)
+      (when (opencode--api-url-running-p url password t)
         info))))
 
 (defun opencode--serve-command ()
@@ -242,6 +252,46 @@ PASSWORD is used for Basic authentication when non-nil."
     (message "Connected to %s (OpenCode %s)"
              opencode-api-url opencode-api-version)))
 
+(defun opencode--connect-to-service (on-connect &optional attempts)
+  "Connect to the registered OpenCode service, polling for up to ATTEMPTS tries.
+ON-CONNECT runs after a successful connection."
+  (cond
+   (opencode--event-subscription
+    (funcall on-connect))
+   ((opencode--service-info)
+    (let ((info (opencode--service-info)))
+      (opencode-connect-url (alist-get 'url info)
+                            on-connect
+                            (alist-get 'password info))))
+   ((and attempts (> attempts 0))
+    (run-with-timer 0.2 nil
+                    #'opencode--connect-to-service
+                    on-connect
+                    (1- attempts)))
+   (t
+    (user-error "OpenCode background service did not register"))))
+
+(defun opencode--start-service (on-connect)
+  "Start the shared OpenCode background service and connect to it.
+ON-CONNECT runs after the service registers and authentication succeeds."
+  (let ((buffer (get-buffer-create "*opencode-service*")))
+    (with-current-buffer buffer
+      (erase-buffer))
+    (setq opencode--service-start-process
+          (start-process-shell-command
+           "opencode-service" buffer
+           (format "%s service start" opencode-command)))
+    (set-process-sentinel
+     opencode--service-start-process
+     (lambda (process event)
+       (when (memq (process-status process) '(exit signal))
+         (setq opencode--service-start-process nil)
+         (if (and (eq (process-status process) 'exit)
+                  (zerop (process-exit-status process)))
+             (opencode--connect-to-service on-connect 100)
+           (user-error "OpenCode background service failed: %s"
+                       (string-trim-right event "\n"))))))))
+
 (defun opencode-autoconnect (on-connect)
   "Connect to an existing server if one is running, otherwise start a new one.
 Only starts new one if `opencode-auto-start-server' is non-nil.
@@ -253,6 +303,9 @@ Run ON-CONNECT after connected."
    ;; We started a server process that's still alive
    ((process-live-p opencode--process)
     (funcall on-connect))
+   ;; The background service is still starting
+   ((process-live-p opencode--service-start-process)
+    (opencode--connect-to-service on-connect 100))
    ;; A V2 background service is registered and healthy
    ((opencode--service-info)
     (let ((info (opencode--service-info)))
@@ -262,9 +315,13 @@ Run ON-CONNECT after connected."
    ;; Server already running externally at the configured address
    ((opencode--server-running-p)
     (opencode-connect opencode-host opencode-port on-connect))
-   ;; Need to start a new server
+   ;; Need to start a new server.  Prefer the shared V2 background
+   ;; service so we do not collide with the server used by the TUI.
    (opencode-auto-start-server
-    (opencode--start-server on-connect))
+    (if (and opencode-use-service-discovery
+             (null opencode-serve-command))
+        (opencode--start-service on-connect)
+      (opencode--start-server on-connect)))
    ;; Auto-start disabled, no server running
    (t
     (user-error "No opencode server running at %s:%d (auto-start disabled)"
