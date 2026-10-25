@@ -201,6 +201,7 @@ Retain one line of context for headers whose delimiter has yet to arrive."
   "Highlight the prompt after displaying output.
 Make sure a response that did not end with a newline cannot leave its
 last line attached to the user's input line."
+  (opencode--finish-reasoning)
   (opencode--clear-input-margin)
   (let ((start (opencode--session-process-position)))
     (unless (or (bobp) (eq (char-before start) ?\n))
@@ -269,9 +270,79 @@ Return the margin overlay."
           (opencode-fold-register beginning end type margin))))))
 
 
+(defvar-local opencode--reasoning-pending nil
+  "Reasoning text accumulated while the model is still thinking.")
+(defvar-local opencode--reasoning-header-start nil)
+(defvar-local opencode--reasoning-header-end nil)
+(defvar-local opencode--reasoning-margin nil)
+
+(defun opencode--reasoning-pending-p ()
+  "Return non-nil when a reasoning block is still streaming."
+  (stringp opencode--reasoning-pending))
+
+(defun opencode--set-reasoning-header (label)
+  "Replace the current reasoning header with LABEL."
+  (when (and (markerp opencode--reasoning-header-start)
+             (markerp opencode--reasoning-header-end))
+    (let ((start (marker-position opencode--reasoning-header-start))
+          (end (marker-position opencode--reasoning-header-end))
+          (inhibit-read-only t))
+      (when (and start end)
+        (goto-char start)
+        (delete-region start end)
+        (insert (propertize label 'face 'bold) "\n")
+        (set-marker opencode--reasoning-header-end (point))))))
+
+(defun opencode--start-reasoning ()
+  "Start a reasoning block with a stable visible header."
+  (let ((start (opencode--session-process-position)))
+    (setq opencode--reasoning-pending "")
+    (opencode--output (propertize "Thinking" 'face 'bold))
+    (opencode--output "\n")
+    (setq opencode--reasoning-header-start (copy-marker start)
+          opencode--reasoning-header-end
+          (copy-marker (opencode--session-process-position))
+          opencode--reasoning-margin
+          (opencode--add-margin start (opencode--session-process-position)
+                                'opencode-reasoning-margin-highlight))))
+
+(defun opencode--insert-reasoning-delta (text)
+  "Accumulate reasoning delta TEXT without writing it into the buffer."
+  (unless (opencode--reasoning-pending-p)
+    (opencode--start-reasoning))
+  (setq opencode--reasoning-pending
+        (concat opencode--reasoning-pending text)))
+
+(defun opencode--finish-reasoning ()
+  "Write the accumulated reasoning body and fold it in one operation."
+  (when (opencode--reasoning-pending-p)
+    (let ((body opencode--reasoning-pending)
+          (start (and (markerp opencode--reasoning-header-start)
+                      (marker-position opencode--reasoning-header-start)))
+          (margin opencode--reasoning-margin))
+      (opencode--set-reasoning-header "Thought")
+      (let ((header-end (and (markerp opencode--reasoning-header-end)
+                             (marker-position opencode--reasoning-header-end)))
+            (process (get-buffer-process (current-buffer))))
+        (when (and header-end process)
+          (set-marker (process-mark process) header-end)))
+      (unless (string-empty-p body)
+        (opencode--output body))
+      (when start
+        (opencode-fold-register start (opencode--session-process-position)
+                                'reasoning margin))
+      (setq opencode--reasoning-pending nil
+            opencode--reasoning-header-start nil
+            opencode--reasoning-header-end nil
+            opencode--reasoning-margin nil))))
+
 (defun opencode--insert-reasoning-block (text)
-  "Insert TEXT as reasoning block."
-  (opencode--insert-block-with-margin text 'opencode-reasoning-margin-highlight))
+  "Insert TEXT as a completed reasoning block."
+  (unless (string-empty-p text)
+    (opencode--finish-reasoning)
+    (opencode--start-reasoning)
+    (opencode--insert-reasoning-delta text)
+    (opencode--finish-reasoning)))
 
 
 (defun opencode--session-process-position ()

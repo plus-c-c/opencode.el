@@ -65,6 +65,8 @@ PART-ID is id of PART"
       (when (string-empty-p .text)
         (puthash part-id type opencode-part-type)))
     (opencode--with-session-buffer .sessionID
+      (unless (equal type "reasoning")
+        (opencode--finish-reasoning))
       (when-let* ((message-parts (assoc-string .messageID opencode-assistant-messages)))
         (let* ((last-type (cadr message-parts))
                (last-part-id (cddr message-parts))
@@ -93,7 +95,7 @@ PART-ID is id of PART"
             (setf (cdr message-parts) (cons current-type part-id)))
           (pcase type
             ((and "reasoning" (guard delta))
-             (opencode--insert-reasoning-block delta))
+             (opencode--insert-reasoning-delta delta))
             ((and "text" (guard delta))
              (opencode--output delta))
             ("tool"
@@ -110,6 +112,8 @@ PART-ID is id of PART"
             ("step-finish"
              (when (string= "stop" .reason)
                (opencode--maybe-insert-block-spacing))))
+          (when (and (equal type "reasoning") .time.end)
+            (opencode--finish-reasoning))
           (when (and (equal type "text")
                      (or .time.end (and delta (string-search "\n" delta))))
             (opencode--align-finished-tables .time.end)))))))
